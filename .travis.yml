@@ -5,13 +5,13 @@ services:
 before_install:
   - docker pull jefferyb/polymer-cli
   - docker pull python:3
-  - docker run --name build-front -u root -it -d -v $(pwd):/tmp/app -w /tmp/app jefferyb/polymer-cli bash
+  - docker run --name build-front -u root -it -d -v $(pwd):/tmp/app -w /tmp/app/webapp jefferyb/polymer-cli bash
   - docker run --name build-back -u root -it -d -v $(pwd):/tmp/app -w /tmp/app python:3 bash
 script:
   - echo "Building Backend"
-  - docker exec -w /tmp/app build-back pip install -e .
+  - docker exec build-back pip install -e .
   - echo "Building Frontend"
-  - docker exec -w /tmp/app/webapp build-front npm install -g bower
-  - docker exec -w /tmp/app/webapp build-front bower --allow-root install
-  - docker exec -w /tmp/app/webapp build-front polymer build
+  - docker exec build-front npm install -g bower
+  - docker exec build-front bower --allow-root install
+  - docker exec build-front polymer build
   - echo "Finished!"
