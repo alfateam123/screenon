@@ -1,34 +1,46 @@
 <link rel="import" href="../../bower_components/polymer/polymer-element.html">
 <link rel="import" href="../../bower_components/px-vis-xy-chart/px-vis-xy-chart.html">
+<link rel="import" href="../../bower_components/px-simple-horizontal-bar-chart/px-simple-horizontal-bar-chart.html">
 
 <dom-module id="distribution-chart">
     <template>
-        <button on-click="switch_chart_type">Switch to [[chartType]] chart</button>
-        <i>The <b>Logarithmic chart</b> will compress time deltas over 60 seconds, leaving more space
-            for intervals under 60 seconds. Switch to this type of chart to better appreciate short-time usages.
-            <b>Normal chart</b>, instead, won't perform any kind of compression on data. It is better suited
-            to explore the distribution of longer usage intervals.</i>
-        <px-vis-xy-chart
-                chart-data="[[chartData]]"
-                show-tooltip
-                hide-register
-                series-config="[[seriesConfig]]"></px-vis-xy-chart>
-        <table>
-            <thead>
-            <tr>
-                <th>time</th>
-                <th>hits</th>
-            </tr>
-            </thead>
-            <tbody>
-            <template is="dom-repeat" items="[[chartData]]">
-                <tr>
-                    <td>time: [[item.delta]]s</td>
-                    <td>hits: [[item.hits]]</td>
-                </tr>
-            </template>
-            </tbody>
-        </table>
+        <style>
+            :root {
+                --px-vis-series-color-0: #31aa2c;
+                --px-vis-series-color-1: #bbac2e;
+                --px-vis-series-color-2: #cc902a;
+                --px-vis-series-color-3: #dd6344;
+                --px-vis-series-color-4: #dd529d;
+                --px-vis-series-color-5: #9358dd;
+            }
+        </style>
+        <p>
+        This view is composed by two charts:
+        <ul>
+        <li>the left one shows how many times you interacted with the phone, grouped by time intervals</li>
+        <li>the right one shows the real time you spent on the phone</li>
+        </ul>
+        The values are either shown as percentages (when followed by %) or seconds.
+        For now, there is no drill-down or matrix-style chart to show the usage at different times (while at work/school
+        or during lunch break): the results are based on the whole day.
+        </p>
+        <br />
+        <button on-click="switch_chart_type">Switch to [[otherChartType]]</button>
+        <br />
+        <px-simple-horizontal-bar-chart
+                width="600"
+                height="400"
+                bar-labels=[[chartType]]
+                legend-labels='["<5s","5-10s","10-30s","30-60s","60-300s",">300s"]'
+                chart-data=[[chartData]]
+        ></px-simple-horizontal-bar-chart>
+        <px-simple-horizontal-bar-chart
+                width="600"
+                height="400"
+                bar-labels=[[chartType]]
+                legend-labels='["<5s","5-10s","10-30s","30-60s","60-300s",">300s"]'
+                chart-data=[[cumulatedChartData]]
+        ></px-simple-horizontal-bar-chart>
     </template>
 
     <script>
@@ -44,53 +56,71 @@
             static get properties() {
                 return {
                     data: {type: Array, observer: "_dataChanged"},
-                    chartType: {type: String, value: "Normal"},
-                    isLog: {type: Boolean, value: true}
+                    chartType: {type: String, value: "values"},
+                    otherChartType: {type: String, value: "percentage"},
                 };
             }
 
             switch_chart_type() {
-                if (this.chartType === "Logarithmic") {
-                    this.set("chartType", "Normal");
-                    this.set("isLog", true);
+                if (this.chartType === "values") {
+                    this.set("chartType", "percentage");
+                    this.set("otherChartType", "values");
                 }
                 else {
-                    this.set("chartType", "Logarithmic");
-                    this.set("isLog", false);
+                    this.set("chartType", "values");
+                    this.set("otherChartType", "percentage");
                 }
                 this._dataChanged(this.data);
             }
 
             _dataChanged(new_data) {
-                console.log("distribution-chart", "dataChanged", new_data);
                 if (!new_data) {
                     this.set("chartData", []);
                 }
                 else {
-                    this.set("chartData", new_data
-                        .map(entry => {
-                            return {
-                                x: this.isLog ? Math.log(new Number(entry.delta)) / Math.log(60) : new Number(entry.delta),
-                                y: entry.hits,
-                                delta: new Number(entry.delta),
-                                hits: entry.hits
-                            }
-                        }).sort((a, b) => a.delta - b.delta));
+                    let isPercentage = this.chartType === "percentage";
 
+                    let counter = 0;
+                    let result = [0, 0, 0, 0, 0, 0];
+                    let sumCounter = 0;
+                    let sumResult = [0, 0, 0, 0, 0, 0];
+                    new_data.forEach(record => {
+                        // legend-labels='["<5s","5-10s","10-30s","30-60s","60-300s",">300s"]'
+                        let index = -1;
+                        if(record.delta < 5) {
+                            index = 0;
+                        }
+                        else if(record.delta <= 10) {
+                            index = 1;
+                        }
+                        else if(record.delta <= 30) {
+                            index = 2
+                        }
+                        else if(record.delta <= 60) {
+                            index = 3
+                        }
+                        else if(record.delta <= 300) {
+                            index = 4
+                        }
+                        else {
+                            index = 5;
+                        }
+                        counter += record.hits;
+                        result[index] += record.hits;
+                        sumCounter += record.delta * record.hits;
+                        sumResult[index] += record.delta * record.hits;
+                    });
+
+                    if(isPercentage) {
+                        result = result.map(num => Math.round((num/counter)*100));
+                        sumResult = sumResult.map(num => Math.round((num/sumCounter)*100));
+                    }
+
+                    this.set("chartData", result);
+                    this.set("cumulatedChartData", sumResult);
                 }
-                this.set("seriesConfig", {
-                    "deltaHits": {
-                        type: "scatter",
-                        name: "hits of duration",
-                        x: "x",
-                        y: "y",
-                        "axis": {"id": "axis1", "side": "left", "number": "1"}
-                    },
-                });
             }
-
         }
-
         window.customElements.define(DistributionChart.is, DistributionChart);
     </script>
 </dom-module>
