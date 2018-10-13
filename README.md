@@ -4,6 +4,8 @@ ScreenOn is an application to measure how much time an user spends on their phon
 It is composed of an Automate flow, and a web application with a Polymer frontend
 and a Python/Flask backend.
 
+I described it in a [dedicated blog post](https://wintermade.it/blog/posts/screenon-measuring-phone-usage-with-automate-and-python.html)
+
 DISCLAIMER: in its current state, this application is not meant to be hosted
 on the internet. It's recommended to host this application on a host in a local
 network (eg on a Raspberry Pi).
