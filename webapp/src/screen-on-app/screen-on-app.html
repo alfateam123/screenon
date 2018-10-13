@@ -6,7 +6,7 @@
 <link rel="import" href="../data-loader/data-loader.html">
 <link rel="import" href="../cumulated-chart/cumulated-chart.html">
 <link rel="import" href="../distribution-chart/distribution-chart.html">
-<link rel="import" href="screen-on-range-picker.html" />
+<link rel="import" href="screen-on-range-picker.html"/>
 <script src="../data_handling.js"></script>
 
 <dom-module id="screen-on-app">
@@ -14,6 +14,18 @@
         <style>
             :host {
                 display: block;
+            }
+
+            .no-data {
+                min-height: 70vh;
+                width: 100%;
+                display: flex;
+                align-items: center;
+            }
+
+            .no-data p {
+                text-align: center;
+                width: 100%;
             }
         </style>
         <h2>Screen-On - how much are you using your phone?</h2>
@@ -41,29 +53,46 @@
                 <px-tab id="tab3">Distribution of phone usage</px-tab>
             </px-tabs>
             <iron-pages selected="[[selected_chart]]">
-                <div id="tab1-content" style="height: 600px">
-                    <cumulated-chart data="[[cumulated_per_day]]"></cumulated-chart>
-                </div>
-                <div id="tab2-content" style="height: 600px">
-                    <px-vis-timeseries
-                            x-axis-type="timeLocal"
-                            tooltip-config="[[timezoneConfig]]"
-                            register-config="[[timezoneConfig]]"
-                            chart-data="[[chartData]]"
-                            height="350"
-                            show-tooltip
-                            hide-register
-                            series-config="[[seriesConfig]]">
-                    </px-vis-timeseries>
-                </div>
-                <div id="tab3-content" style="height: 600px">
-                    <distribution-chart data="[[distribution_per_day]]"></distribution-chart>
-                </div>
+                <template is="dom-if" if="[[!show_loading]]">
+                    <div id="tab1-content" style="height: 600px">
+                        <cumulated-chart data="[[cumulated_per_day]]"></cumulated-chart>
+                    </div>
+                    <div id="tab2-content" style="height: 600px">
+                        <px-vis-timeseries
+                                x-axis-type="timeLocal"
+                                tooltip-config="[[timezoneConfig]]"
+                                register-config="[[timezoneConfig]]"
+                                chart-data="[[chartData]]"
+                                height="350"
+                                show-tooltip
+                                hide-register
+                                series-config="[[seriesConfig]]">
+                        </px-vis-timeseries>
+                    </div>
+                    <div id="tab3-content" style="height: 600px">
+                        <distribution-chart data="[[distribution_per_day]]"></distribution-chart>
+                    </div>
+                </template>
             </iron-pages>
-            <template is="dom-if" if="[[show_loading]]">
-                <div>[[loading_text]]</div>
-            </template>
         </div>
+        <template is="dom-if" if="[[show_loading]]">
+            <div class="no-data">
+                <template is="dom-if" if="[[!show_help_message]]">
+                    <p>Loading...</p>
+                </template>
+                <template is="dom-if" if="[[show_help_message]]">
+                    <div style="margin: auto; text-align: center; padding: 0 20%;">
+                        <b>No data in the requested interval</b>
+                        <br/>
+                        <p>
+                            There are two reasons for this: either you did not
+                            use the phone during that time (unlikely? :P), or you did not
+                            upload your phone usage data.
+                        </p>
+                    </div>
+                </template>
+            </div>
+        </template>
     </template>
     <script>
         /**
@@ -93,6 +122,9 @@
                     show_loading: {
                         type: Boolean, value: true
                     },
+                    show_help_message: {
+                        type: Boolean, value: false
+                    },
                     loading_text: {
                         type: String, value: "Loading..."
                     },
@@ -109,10 +141,11 @@
             fill_table(evt) {
                 console.log(evt);
                 let formatted_json = evt.detail;
-                if(formatted_json.length === 0) {
+                if (formatted_json.length === 0) {
                     // stop here, as there are no data.
                     this.set("show_loading", true);
-                    this.set("loading_text", "No data in the requested time interval");
+                    this.set("show_help_message", true);
+                    // this.set("loading_text", "No data in the requested time interval");
                     return;
                 }
                 this.set("show_loading", false);

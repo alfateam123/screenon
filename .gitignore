@@ -1,7 +1,14 @@
 bower_components
 static
+
+#
 .screenon
 .venv
+env
+
 *.db
+*.db.*
 *.csv
 *.json
+.idea
+screenon.egg-info

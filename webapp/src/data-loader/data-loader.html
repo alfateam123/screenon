@@ -46,7 +46,7 @@
             }
 
             dataReceived(evt) {
-                let full_entries_list = evt.detail.response.response;
+                let full_entries_list = evt.detail.response ? evt.detail.response.response : [];
                 this.dispatchEvent(new CustomEvent('data-received', {
                     detail: fix_data(full_entries_list),
                     bubbles: true,
@@ -65,11 +65,13 @@
                     current_instant = current_instant + Math.random() * 1000;
                     current_status = !current_status;
                 }
-                this.dispatchEvent(new CustomEvent('data-received', {
-                    detail: fix_data(full_entries_list),
-                    bubbles: true,
-                    composed: true
-                }));
+                setTimeout(() => {
+                    this.dispatchEvent(new CustomEvent('data-received', {
+                        detail: fix_data(full_entries_list),
+                        bubbles: true,
+                        composed: true
+                    }));
+                }, 5000);
             }
         }
 

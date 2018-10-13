@@ -1,23 +1,28 @@
 const turned_off = (on_off) => on_off === false;
+const turned_on = (on_off) => on_off === true;
 
+// Note that all records in `data` should be of the same day.
 function cumulated_time(data) {
-  let cumulated = [];
-  let currentTotal = 0;
-  let last_entry = null;
-  cumulated.push({instant: data[0].instant, value: 0});
-  data.forEach(entry => {
-    if(turned_off(entry.on_off)) {
-	// TODO: for the time being, we decide to ignore the time before
-	// the first screen change event if the screen was ON
-	if(last_entry !== null) {
-	  const delta = entry.instant - last_entry.instant;
-	  currentTotal += delta;
-	  cumulated.push({instant: entry.instant, value: currentTotal});
-	}
+    if(data.length === 0) {
+        return [];
     }
-    last_entry = entry;
-  });
-  return cumulated;
+
+    let cumulated = [];
+    let currentTotal = 0;
+    let realData = data;
+    cumulated.push({instant: data[0].instant, value: 0});
+    for(let i=0; i<realData.length-1; i+=1) {
+        if(turned_on(realData[i].on_off)) {
+            let delta = realData[i+1].instant - realData[i].instant;
+            cumulated.push({instant: realData[i+1].instant, value: currentTotal + delta});
+            currentTotal += delta;
+        }
+        else {
+            cumulated.push({instant: realData[i+1].instant, value: currentTotal});
+        }
+    }
+
+    return cumulated;
 }
 
 function _group_by(data, ranges_number, time_format) {
@@ -75,51 +80,67 @@ function filter_by_day(data, requested_day) {
   return result;
 }
 
+// @Assumption: records inside `data` are sorted by instant in ascending order
 function merge_consecutive_entries(data) {
-  return data.reduce((prev, entry) => {
-    if(prev.length === 0) return [entry];
+    return data.reduce((prev, entry) => {
+        if (prev.length === 0) return [entry];
 
-    const last_pos = prev.length - 1;
-    if(prev[last_pos].on_off === entry.on_off) {
-	// console.log(prev[last_pos].instant, entry.instant);
-        prev[last_pos].instant = entry.instant;
-    }
-    else {
-        prev.push(entry);
-    }
-    return prev;
-  }, []);
+        const last_pos = prev.length - 1;
+        if (prev[last_pos].on_off !== entry.on_off) {
+            prev.push(entry);
+        }
+        return prev;
+    }, []);
 }
 
 function fix_data(data) {
-  let merged_data = merge_consecutive_entries(data);
+    let sorted_data = data.sort((a_rec, b_rec) => a_rec.instant - b_rec.instant);
 
-  // group entries by day
-  let grouped_by_day = {};
-  merged_data.forEach(entry => {
-    let day = moment.unix(entry.instant).format("YYYY MM DD");
-    if(grouped_by_day[day]) {
-      grouped_by_day[day].push(entry);
-    }
-    else {
-      grouped_by_day[day] = [entry];
-    }
-  });
+    let merged_data = merge_consecutive_entries(sorted_data);
 
-  // add entries at midnight
-  Object.keys(grouped_by_day).forEach((day, i) => {
-    // TODO: replace this condition with fake "opposite" entry(?)
-    if(i === 0) return;
+    // group entries by day
+    let grouped_by_day = {};
+    merged_data.forEach(entry => {
+        let day = moment.unix(entry.instant).format("YYYY MM DD");
+        if (grouped_by_day[day]) {
+            grouped_by_day[day].push(entry);
+        }
+        else {
+            grouped_by_day[day] = [entry];
+        }
+    });
 
-    // not using moment.utc here because timestamps on server are not utc
-    let midnight = moment(day, "YYYY MM DD");
-    let previous_day_entries = grouped_by_day[Object.keys(grouped_by_day)[i-1]];
-    let last_entry_of_previous_day = previous_day_entries[previous_day_entries.length-1];
-    grouped_by_day[day].splice(0, 0, {instant: midnight.valueOf()/1000, on_off: last_entry_of_previous_day.on_off});
-  });
+    // add entries at midnight (end of day)
+    let days = Object.keys(grouped_by_day).sort();
+    days.forEach((day, i) => {
+        // skip startOfDay if first entry is already at start of day
+        let today_entries = grouped_by_day[day];
+        let first_entry = today_entries[0];
+        const skipStartOfDay = (first_entry && first_entry.instant === moment(day, "YYYY MM DD").startOf("day").valueOf()/1000);
 
-  // flatten
-  return Object.values(grouped_by_day).reduce((result, entries) => result.concat(entries), []);
+        // not using moment.utc here because timestamps on server are not utc
+        if(i > 0 && !skipStartOfDay) {
+            let entries = grouped_by_day[days[i-1]];
+            let last_entry_of_yesterday = entries[entries.length - 1];
+            grouped_by_day[day].splice(0, 0, {
+                instant: moment(day, "YYYY MM DD").startOf("day").valueOf() / 1000,
+                on_off: last_entry_of_yesterday.on_off,
+                new_: true
+            });
+        }
+        if (i < days.length-1) {
+            let entries = grouped_by_day[day];
+            let last_entry_of_today = entries[entries.length - 1];
+            grouped_by_day[day].push({
+                instant: moment(day, "YYYY MM DD").endOf("day").valueOf() / 1000,
+                on_off: last_entry_of_today.on_off,
+                new_: true
+            });
+        }
+    });
+
+    // flatten
+    return Object.values(grouped_by_day).reduce((result, entries) => result.concat(entries), []);
 }
 
 function duration_distribution(single_day_data) {

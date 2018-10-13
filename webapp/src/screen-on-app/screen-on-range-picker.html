@@ -20,8 +20,8 @@
                 date-format="YYYY/MM/DD"
                 from-moment="[[minDate]]"
                 to-moment="[[maxDate]]"
-                min-date="{{minDateStr}}"
-                max-date="{{maxDateStr}}"
+                min-date="[[minDateStr]]"
+                max-date="[[maxDateStr]]"
                 on-px-datetime-range-submitted="update_selected_range"></px-rangepicker>
     </template>
     <script>
@@ -40,23 +40,28 @@
                 };
             }
 
+            setShownTime() {
+                let today = moment().endOf("day");
+                let one_week_ago = moment().subtract(7, "days").startOf("day");
+                this.set("minDate", one_week_ago);
+                this.set("maxDate", today);
+            }
+
             dataReceived(evt) {
                 let raw_data = evt.detail.response;
                 let first_moment = moment.unix(raw_data.first_instant).startOf("day");
                 let last_moment = moment.unix(raw_data.last_instant).endOf("day");
 
-                this.set("minDate", first_moment);
-                this.set("maxDate", last_moment);
+                this.setShownTime();
                 this.set("minDateStr", first_moment.toISOString());
                 this.set("maxDateStr", last_moment.toISOString());
             }
 
             mockReceived(evt) {
-                let startOf = moment().subtract(7, "days").startOf("day");
+                let startOf = moment().subtract(50, "days").startOf("day");
                 let endOf = moment().endOf("day");
 
-                this.set("minDate", startOf);
-                this.set("maxDate", endOf);
+                this.setShownTime();
                 this.set("minDateStr", startOf.toISOString());
                 this.set("maxDateStr", endOf.toISOString());
                 console.log(this.get("minDateStr"), this.get("maxDateStr"));
