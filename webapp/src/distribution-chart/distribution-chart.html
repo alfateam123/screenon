@@ -25,22 +25,28 @@
         or during lunch break): the results are based on the whole day.
         </p>
         <br />
-        <button on-click="switch_chart_type">Switch to [[otherChartType]]</button>
-        <br />
-        <px-simple-horizontal-bar-chart
-                width="600"
-                height="400"
-                bar-labels=[[chartType]]
-                legend-labels='["<5s","5-10s","10-30s","30-60s","60-300s",">300s"]'
-                chart-data=[[chartData]]
-        ></px-simple-horizontal-bar-chart>
-        <px-simple-horizontal-bar-chart
-                width="600"
-                height="400"
-                bar-labels=[[chartType]]
-                legend-labels='["<5s","5-10s","10-30s","30-60s","60-300s",">300s"]'
-                chart-data=[[cumulatedChartData]]
-        ></px-simple-horizontal-bar-chart>
+        <template is="dom-if" if="[[_dataSelected]]">
+            <button on-click="switch_chart_type">Switch to [[otherChartType]]</button>
+            <br />
+            <px-simple-horizontal-bar-chart
+                    width="600"
+                    height="400"
+                    bar-labels=[[chartType]]
+                    legend-labels='["<5s","5-10s","10-30s","30-60s","60-300s",">300s"]'
+                    chart-data=[[chartData]]
+            ></px-simple-horizontal-bar-chart>
+            <px-simple-horizontal-bar-chart
+                    width="600"
+                    height="400"
+                    bar-labels=[[chartType]]
+                    legend-labels='["<5s","5-10s","10-30s","30-60s","60-300s",">300s"]'
+                    chart-data=[[cumulatedChartData]]
+            ></px-simple-horizontal-bar-chart>
+        </template>
+        <template is="dom-if" if="[[!_dataSelected]]">
+            <b>To see the charts, please select a day from the single day selector in the top part
+            of the application</b>
+        </template>
     </template>
 
     <script>
@@ -56,6 +62,9 @@
             static get properties() {
                 return {
                     data: {type: Array, observer: "_dataChanged"},
+                    _dataSelected: {type: Boolean, value: false},
+                    chartData: {type: Array, value: []},
+                    cumulatedChartData: {type: Array, value: []},
                     chartType: {type: String, value: "values"},
                     otherChartType: {type: String, value: "percentage"},
                 };
@@ -118,6 +127,7 @@
 
                     this.set("chartData", result);
                     this.set("cumulatedChartData", sumResult);
+                    this.set("_dataSelected", true);
                 }
             }
         }
